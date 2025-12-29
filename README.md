@@ -5,6 +5,8 @@ Small GUI tool to recursively search folder filenames and file contents.
 Features
 - Choose a folder and enter a search string (optional outer quotes are treated as literal)
 - Filename search and content search for supported types (plain text, CSV/TSV, PDF, DOCX, XLSX)
+- Options: skip hidden files/folders, max file size (default 50 MB), max files (default 200,000, 0 = unlimited), max depth (blank = unlimited)
+- Early file-count estimate with warning before large scans
 - Writes `matches.txt` into the scanned folder with matched full paths
 
 Dependencies
@@ -29,7 +31,7 @@ pip install -r requirements.txt
 3. Run the GUI:
 
 ```bash
-/Users/frederickgault/Documents/_Better_Mac_Search/.venv/bin/python gui_folder_string_finder.py
+python gui_folder_string_finder.py
 ```
 
 Notes
