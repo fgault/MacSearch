@@ -786,10 +786,18 @@ class App:
 
         self.results = tk.Text(res_frame, wrap="none")
         self.results.pack(side="left", fill="both", expand=True)
+        self.results.bind("<Double-Button-1>", self.open_selected_event)
+        ToolTip(self.results, "Double-click a single line to open that file. Select a single line and click Open to launch it.")
 
         yscroll = ttk.Scrollbar(res_frame, orient="vertical", command=self.results.yview)
         yscroll.pack(side="right", fill="y")
         self.results.configure(yscrollcommand=yscroll.set)
+
+        actions_row = ttk.Frame(frm)
+        actions_row.pack(fill="x", pady=(4, 0))
+        open_btn = ttk.Button(actions_row, text="Open selected file", command=self.open_selected)
+        open_btn.pack(side="left")
+        ToolTip(open_btn, "Opens the highlighted result with the default app for that file.")
 
     def choose_folder(self):
         folder = filedialog.askdirectory(title="Select a folder to scan")
@@ -897,6 +905,51 @@ class App:
     def show_about(self):
         msg = f"Author: {AUTHOR_NAME}\nRelease date: {RELEASE_DATE}\nRelease level: {RELEASE_LEVEL}"
         messagebox.showinfo("About", msg)
+
+    def open_selected_event(self, event):
+        # Allow double-click to open the line under the cursor only
+        self.open_selected(event=event, force_line=True)
+
+    def open_selected(self, event=None, force_line: bool = False):
+        try:
+            selection = ""
+            if not force_line and self.results.tag_ranges("sel"):
+                selection = self.results.get("sel.first", "sel.last")
+            else:
+                # Always use the single line under cursor/insertion when forced
+                idx = None
+                if event is not None:
+                    idx = self.results.index(f"@{event.x},{event.y}")
+                if idx is None:
+                    idx = self.results.index("insert")
+                selection = self.results.get(f"{idx} linestart", f"{idx} lineend")
+
+            lines = [line.strip() for line in selection.splitlines() if line.strip()]
+            if not lines:
+                messagebox.showinfo("Open file", "Select a single file path in the results, then click Open.")
+                return
+            if len(lines) != 1:
+                messagebox.showinfo("Open file", "Please select only one file path at a time.")
+                return
+
+            path = lines[0]
+            p = Path(path)
+            if not p.exists():
+                messagebox.showerror("Open file", f"File does not exist:\n{path}")
+                return
+            if not p.is_file():
+                messagebox.showerror("Open file", f"Selection is not a file:\n{path}")
+                return
+
+            try:
+                proc = subprocess.run(["open", str(p)], check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                msg = e.stderr.strip() or e.stdout.strip() or str(e)
+                messagebox.showerror("Open file", f"Failed to open file:\n{path}\n\n{msg}")
+            except Exception as e:
+                messagebox.showerror("Open file", f"Failed to open file:\n{path}\n\n{e}")
+        except Exception as e:
+            messagebox.showerror("Open file", f"Unexpected error: {e}")
 
     def _estimate_worker(self, root_path: Path, skip_hidden: bool, skip_system: bool, skip_symlinks: bool, max_depth: Optional[int], max_files: Optional[int]):
         count = 0
