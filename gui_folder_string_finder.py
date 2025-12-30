@@ -794,6 +794,13 @@ class App:
 
         self.results = tk.Text(res_frame, wrap="none")
         self.results.pack(side="left", fill="both", expand=True)
+        # Results selection UX:
+        # - Single click selects exactly one full line (path) under the cursor.
+        # - Double click opens ONLY the currently selected line (if any).
+        self.results.bind("<Button-1>", self.results_single_click)
+        # Prevent click-drag from selecting multiple lines (keeps selection single-line and stable).
+        self.results.bind("<B1-Motion>", lambda e: "break")
+        self.results.bind("<Shift-Button-1>", lambda e: "break")
         self.results.bind("<Double-Button-1>", self.open_selected_event)
         ToolTip(self.results, "Double-click a single line to open that file. Select a single line and click Open to launch it.")
 
@@ -914,10 +921,51 @@ class App:
         msg = f"Author: {AUTHOR_NAME}\nRelease date: {RELEASE_DATE}\nRelease level: {RELEASE_LEVEL}"
         messagebox.showinfo("About", msg)
 
-    def open_selected_event(self, event):
-        # Allow double-click to open the line under the cursor only
-        self.open_selected(event=event, force_line=True)
+    def results_single_click(self, event):
+        """Single-click selects exactly one full line (path) under the cursor.
 
+        Clicking below the last line clears the selection.
+        """
+        w = self.results
+        w.focus_set()
+
+        # If you click below the last rendered line, clear selection (avoid selecting last item).
+        try:
+            last_idx = w.index("end-1c")
+            last_line = int(last_idx.split(".")[0])
+            bbox = w.bbox(f"{last_line}.0")
+            if bbox is not None:
+                _x, y, _w, h = bbox
+                if event.y > (y + h):
+                    w.tag_remove("sel", "1.0", "end")
+                    return "break"
+        except Exception:
+            # If anything goes wrong, fall back to normal selection behavior.
+            pass
+
+        idx = w.index(f"@{event.x},{event.y}")
+        line = int(idx.split(".")[0])
+        line_start = f"{line}.0"
+        line_end = f"{line}.0 lineend"
+
+        # If the clicked line is empty/whitespace, treat it as 'no selection'.
+        if not w.get(line_start, line_end).strip():
+            w.tag_remove("sel", "1.0", "end")
+            return "break"
+
+        w.tag_remove("sel", "1.0", "end")
+        w.tag_add("sel", line_start, line_end)
+        w.mark_set("insert", line_start)
+        w.see(line_start)
+        return "break"
+
+    def open_selected_event(self, event):
+        # Double-click should open ONLY an already-selected single line.
+        # If nothing is selected, do nothing (avoid surprising opens).
+        if not self.results.tag_ranges("sel"):
+            return "break"
+        self.open_selected(event=None, force_line=False)
+        return "break"
     def open_selected(self, event=None, force_line: bool = False):
         try:
             selection = ""
