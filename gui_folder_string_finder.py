@@ -594,20 +594,21 @@ def search_folder(
                 errors += 1
                 return matched, oversize, errors, pdf_checked
 
-        if extracted is PDF_DIRECT_SEARCH:
-            pdf_checked += 1
-            ok, _perr = pdf_contains_needle(path, needle, case_sensitive, stop_event=stop_event)
-            if ok is True:
-                matched.append(str(path))
-            elif ok is None:
-                errors += 1
-            return matched, oversize, errors, pdf_checked
+            if extracted is PDF_DIRECT_SEARCH:
+                pdf_checked += 1
+                ok, _perr = pdf_contains_needle(path, needle, case_sensitive, stop_event=stop_event)
+                if ok is True:
+                    matched.append(str(path))
+                elif ok is None:
+                    errors += 1
+                return matched, oversize, errors, pdf_checked
 
-        try:
-            if needle_norm in norm(str(extracted)):
-                matched.append(str(path))
-        except Exception:
-            errors += 1
+            try:
+                if needle_norm in norm(str(extracted)):
+                    matched.append(str(path))
+            except Exception:
+                errors += 1
+
         return matched, oversize, errors, pdf_checked
 
     def file_iter():
@@ -792,7 +793,7 @@ class App:
         res_frame = ttk.LabelFrame(frm, text="Matches (full paths)", padding=8)
         res_frame.pack(fill="both", expand=True)
 
-        self.results = tk.Text(res_frame, wrap="none")
+        self.results = tk.Text(res_frame, wrap="none", bg="white", fg="black", insertbackground="black")
         self.results.pack(side="left", fill="both", expand=True)
         # Results selection UX:
         # - Single click selects exactly one full line (path) under the cursor.

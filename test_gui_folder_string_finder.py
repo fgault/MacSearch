@@ -121,3 +121,35 @@ def test_search_folder_honors_max_files():
         assert scanned == 2  # should stop after reaching the limit
         assert len(matches) <= 2
 
+
+def test_search_folder_filename_only_mode():
+    """Test that search_content=False works without crashing.
+
+    This is a regression test for a bug where 'extracted' was referenced
+    outside the 'if search_content:' block, causing an UnboundLocalError
+    when searching filenames only.
+    """
+    with home_tempdir() as root:
+        write_file(root / "needle_in_name.txt", "no match in content")
+        write_file(root / "other.txt", "needle in content but not name")
+        write_file(root / "another.txt", "nothing here")
+
+        scanned, matches = gfs.search_folder(
+            root,
+            needle="needle",
+            case_sensitive=True,
+            skip_hidden=True,
+            skip_system=True,
+            file_size_cap_bytes=gfs.FILE_SIZE_CAP_BYTES,
+            max_files=None,
+            max_depth=None,
+            search_content=False,  # filename only - this triggered the bug
+        )
+
+        assert scanned >= 3
+        # Only the file with "needle" in its name should match
+        assert str(root / "needle_in_name.txt") in matches
+        # Files with "needle" only in content should NOT match
+        assert str(root / "other.txt") not in matches
+        assert str(root / "another.txt") not in matches
+
